@@ -1,8 +1,20 @@
 import pickle as pkl
 import numpy as np
 import matplotlib.pyplot as plt
+import json
+from PIL import Image
+import requests
 from grakel.utils import graph_from_networkx
 from grakel.kernels import WeisfeilerLehman, VertexHistogram, PyramidMatch, PropagationAttr, SubgraphMatching, GraphHopper
+
+def print_image(image_data, id):
+  url = image_data[id]['url']
+  response = requests.get(url, stream=True)
+  img = Image.open(response.raw)
+
+  # plt.imshow(img)
+  # plt.show()
+  return img
 
 def prepare_graph_kernel(G, syn_n, embedding_map, syn_e = None):
 
@@ -73,13 +85,13 @@ def compute_kernel(gk, G_train, out_path, graph_idx):
 
 def main():
     #load graphs, attributes
-    large_graphs = pkl.load(open('scene_graphs500_large.pkl', 'rb'))
-    large_graphs_idx = pkl.load(open('scene500_large_idx.pkl', 'rb'))
+    large_graphs = pkl.load(open('../data/scene_graphs500_large.pkl', 'rb'))
+    large_graphs_idx = pkl.load(open('../data/scene500_large_idx.pkl', 'rb'))
 
-    embeddings_path2vec = pkl.load( open( "embeddings_path2vec.pkl", "rb" ) )
+    embeddings_path2vec = pkl.load( open( "../data/embeddings_path2vec.pkl", "rb" ) )
 
-    syn_n200_large = pkl.load(open('syn_n500_large.pkl', 'rb'))
-    syn_e200_large = pkl.load(open('syn_e500_large.pkl', 'rb'))
+    syn_n200_large = pkl.load(open('../data/syn_n500_large.pkl', 'rb'))
+    syn_e200_large = pkl.load(open('../data/syn_e500_large.pkl', 'rb'))
 
     #compute kernels without attributes
     G_train = list(graph_from_networkx(large_graphs, node_labels_tag='label', edge_labels_tag='label'))
@@ -97,17 +109,21 @@ def main():
     gk5 = GraphHopper(normalize=False, kernel_type='linear')
 
     sim = []
-    sim.append(compute_kernel(gk1, G_train, '../outs/sim500_wl.pkl', large_graphs_idx))
-    sim.append(compute_kernel(gk2, G_train, '../outs/sim500_pm.pkl', large_graphs_idx))
-    sim.append(compute_kernel(gk3, G_train_attr, '../outs/sim500_pa_attr.pkl', large_graphs_idx))
-    sim.append(compute_kernel(gk4, G_train_attr, '../outs/sim500_sm_attr.pkl', large_graphs_idx))
-    sim.append(compute_kernel(gk5, G_train_attr, '../outs/sim500_gh_attr.pkl', large_graphs_idx))
+    sim.append(compute_kernel(gk1, G_train, '../outs/sim500_wl', large_graphs_idx))
+    sim.append(compute_kernel(gk2, G_train, '../outs/sim500_pm', large_graphs_idx))
+    sim.append(compute_kernel(gk3, G_train_attr, '../outs/sim500_pa_attr', large_graphs_idx))
+    sim.append(compute_kernel(gk4, G_train_attr, '../outs/sim500_sm_attr', large_graphs_idx))
+    sim.append(compute_kernel(gk5, G_train_attr, '../outs/sim500_gh_attr', large_graphs_idx))
 
-    # #print for an image (id = 10) #needs additional loads
-    # for j in range(len(sim)):
-    #     f, axarr = plt.subplots(1,10,figsize=(30,30))
-    #     for i in range(10):
-    #         axarr[i].imshow(print_image(sim[10][9-i]))
+    f = open('../data/image_data.json')
+    image_data = json.load(f)
+    f.close()
+
+    #print for an image (id = 10)
+    for j in range(len(sim)):
+        f, axarr = plt.subplots(1,10,figsize=(30,30))
+        for i in range(10):
+            axarr[i].imshow(print_image(image_data, sim[10][9-i]))
 
 
 if __name__ == "__main__":
