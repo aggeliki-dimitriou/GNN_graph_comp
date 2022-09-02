@@ -4,6 +4,7 @@ import pickle as pkl
 import rbo
 
 ##image_data.json.zip must be unzipped in its directory
+##download embeddings_path2vec.pkl
 
 def get_ranking(idx, geds, idx_list, rank = False):
   sim_keys = [key for key in geds.keys() if idx in key]

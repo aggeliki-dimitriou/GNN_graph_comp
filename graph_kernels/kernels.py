@@ -1,4 +1,3 @@
-import pickle as pkl
 import numpy as np
 import matplotlib.pyplot as plt
 import json
@@ -6,6 +5,7 @@ from PIL import Image
 import requests
 from grakel.utils import graph_from_networkx
 from grakel.kernels import WeisfeilerLehman, VertexHistogram, PyramidMatch, PropagationAttr, SubgraphMatching, GraphHopper
+import time
 
 def print_image(image_data, id):
   url = image_data[id]['url']
@@ -18,7 +18,7 @@ def print_image(image_data, id):
 
 def prepare_graph_kernel(G, syn_n, embedding_map, syn_e = None):
 
-  # create edge index from 
+  # create edge index from
   edge_set = set(G.edges())
 
   embeddings = {}
@@ -44,10 +44,10 @@ def prepare_graph_kernel(G, syn_n, embedding_map, syn_e = None):
         emb = embedding_map[names[0]]
       else:
         emb = np.array([names[0]])
-        
+
       if None in np.array(emb):
         print(emb)
-      
+
       edge_embeddings[i] = list(emb)
 
   result = [edge_set, embeddings, edge_embeddings]
@@ -59,7 +59,7 @@ def most_similar_graph(idx, emb, ten=False):
   if ten:
     sim = sorted_emb[-10:]
   else:
-    sim = sorted_emb[-1] 
+    sim = sorted_emb[-1]
   return sim
 
 
@@ -72,7 +72,9 @@ def find_all_similar(emb, ten = False):
   return similarities
 
 def compute_kernel(gk, G_train, out_path, graph_idx):
+    t = time.time()
     K_train = gk.fit_transform(G_train)
+    print('Done! {} seconds elapsed.'.format(time.time()-t))
 
     pkl.dump(K_train, open(out_path + '_rank.pkl', 'wb'))
     sim500 = find_all_similar(K_train, True)
@@ -109,10 +111,17 @@ def main():
     gk5 = GraphHopper(normalize=False, kernel_type='linear')
 
     sim = []
+    print('Computing Weifeiler-Lehman Kernel...')
     sim.append(compute_kernel(gk1, G_train, '../outs/sim500_wl', large_graphs_idx))
+    # a = gk2.fit(G_train)
+    # pkl.dump(a, open('hists_pm.pkl', 'wb'))
+    print('Computing Pyramid Match Kernel...')
     sim.append(compute_kernel(gk2, G_train, '../outs/sim500_pm', large_graphs_idx))
+    print('Computing Propagation Attribute Kernel...')
     sim.append(compute_kernel(gk3, G_train_attr, '../outs/sim500_pa_attr', large_graphs_idx))
+    print('Computing Subgraph Matching Kernel...')
     sim.append(compute_kernel(gk4, G_train_attr, '../outs/sim500_sm_attr', large_graphs_idx))
+    print('Computing GraphHopper Kernel...')
     sim.append(compute_kernel(gk5, G_train_attr, '../outs/sim500_gh_attr', large_graphs_idx))
 
     f = open('../data/image_data.json')
@@ -123,8 +132,4 @@ def main():
     for j in range(len(sim)):
         f, axarr = plt.subplots(1,10,figsize=(30,30))
         for i in range(10):
-            axarr[i].imshow(print_image(image_data, sim[10][9-i]))
-
-
-if __name__ == "__main__":
-    main()
+            axarr[i].imshow(print_image(image_data, sim[j][10][9-i]))
