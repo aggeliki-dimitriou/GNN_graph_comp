@@ -133,3 +133,6 @@ def main():
         f, axarr = plt.subplots(1,10,figsize=(30,30))
         for i in range(10):
             axarr[i].imshow(print_image(image_data, sim[j][10][9-i]))
+
+if __name__ == "__main__":
+    main()
