@@ -66,14 +66,15 @@ def hit_percentage(a, b):
 
   return intermediate_hit, np.mean(intermediate_hit)
 
-def score_stats(gd, sims):
+def score_stats(gd, sims,amount,names):
   hps = dict()
   rbos = dict()
   for k in [10, 5, 2]:
     hps[k] = list()
     rbos[k] = list()
     print('---- k = {} ----'.format(k))
-    for sim in sims:
+    for sim, name in zip(sims,names):
+      print(name)
       all_hps, mean_hp = hit_percentage(np.array(sim)[:,:k], np.array(gd)[:,:k])
       hps[k].append(all_hps)
       print("Hit Percentage: {}".format(mean_hp))
@@ -157,7 +158,7 @@ def main():
     except:
       print('Provide top 10 resutls for kernels in directory "outs"!')
 
-    for i in sims:
+    for i in range(len(sims)):
       sims[i] = [list(reversed(sims[i][j])) for j in range(500)]
 
     #GNN embeddings
@@ -203,8 +204,10 @@ def main():
 
     amount = 500
 
+    print()
     print('Evaluation of Kernel Methods')
-  
+    print()
+
     ndcgs = dict()
 
     for k in [10, 5, 2]:
@@ -219,15 +222,17 @@ def main():
     mean_ndcgs = dict()
     for k in [10, 5, 2]:
         mean_ndcgs[k] = list()
-        for i in range(7):
+        for i in range(5):
             mean_ndcgs[k].append(np.mean(ndcgs[k][i]))
 
     print("NDCG:", mean_ndcgs)
 
+    names_k = ['WL-KERNEL', 'PM-KERNEL', 'PA-KERNEL', 'SM-KERNEL', 'GH-KERNEL']
+    hps, rbos = score_stats(gd, sims,amount,names_k)
 
-    hps, rbos = score_stats(gd, sims)
-
+    print()
     print('Evaluation of GNN Methods')
+    print()
 
     ndcgs = dict()
 
@@ -243,13 +248,13 @@ def main():
     mean_ndcgs = dict()
     for k in [10, 5, 2]:
         mean_ndcgs[k] = list()
-        for i in range(7):
+        for i in range(3):
             mean_ndcgs[k].append(np.mean(ndcgs[k][i]))
 
     print("NDCG:", mean_ndcgs)
 
-
-    hps, rbos = score_stats(gd, emb_10)
+    names = ['GCN-COMP', 'GAT-COMP', 'GIN-COMP']
+    hps, rbos = score_stats(gd, emb_10,amount,names)
 
 if __name__ == "__main__":
     main()
