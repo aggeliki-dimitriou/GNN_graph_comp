@@ -172,11 +172,24 @@ class Trainer:
 
         for graph_batch in graph_loader:
             embedding_batch = self.model.conv_pass(graph_batch.feature.float(), graph_batch.edge_index,
-                                                   graph_batch.batch, 1)
+                                                   graph_batch.batch)
             for i in embedding_batch:
                 embeddings.append(i.detach().numpy())
 
         pkl.dump(embeddings, open(self.args.EMB_SAVE_PATH, 'wb'))
+
+    def find_similarity(self):
+        print("\n\nFind Similarity...\n")
+        self.real_idx = pkl.load(open(self.args.IDX_PATH, 'rb'))
+
+        G1 = self.graphs[self.real_idx.index(self.args.g1)]
+        G2 = self.graphs[self.real_idx.index(self.args.g2)]
+
+        train_loader_1 = DataLoader([from_networkx(G1)], batch_size=1)
+        train_loader_2 = DataLoader([from_networkx(G2)], batch_size=1)
+        sim = self.model(train_loader_1, train_loader_2)
+
+        print(sim)
 
     def load(self):
         print('Loading pre-existing model...')

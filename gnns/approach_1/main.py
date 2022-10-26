@@ -10,10 +10,13 @@ def main():
     else:
         trainer.fit()
 
-    if args.SAVE_PATH:
-        trainer.save()
+    if args.SIM:
+        trainer.find_similarity()
+    else:
+        if args.SAVE_PATH:
+            trainer.save()
 
-    trainer.predict()
+        trainer.predict()
     print("-----  THE END  -----")
 
 
