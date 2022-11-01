@@ -12,11 +12,14 @@ def main():
 
     if args.SIM:
         trainer.find_similarity()
+    elif args.TEST: 
+        trainer.test()
     else:
         if args.SAVE_PATH:
             trainer.save()
-
+            
         trainer.predict()
+        
     print("-----  THE END  -----")
 
 

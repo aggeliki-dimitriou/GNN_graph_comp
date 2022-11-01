@@ -51,6 +51,9 @@ class Trainer:
 
         self.graphs = pkl.load(open(self.args.GRAPH_PATH, "rb"))
 
+        if self.args.TEST_GRAPH_PATH:
+          self.test_graphs = pkl.load(open(self.args.TEST_GRAPH_PATH, "rb"))
+
         # load and assign attributes
         syn_n = pkl.load(open(self.args.SYN_N_PATH, "rb"))
         # syn_e = pkl.load(open(SYN_E_PATH, "rb"))
@@ -58,9 +61,21 @@ class Trainer:
 
         self.num_features = len(list(embeddings.values())[0])
 
-        self.graph_attributes = []
-        for g_idx, G in enumerate(self.graphs):
-            # attributes = []
+        #self.graph_attributes = []
+        self.attach_features(embeddings, syn_n, self.graphs)
+
+        if self.args.TEST_GRAPH_PATH:
+          self.attach_features(embeddings, syn_n, self.test_graphs)
+          print(self.test_graphs[0].nodes.data())
+
+        # 124750 possible pairs pick 2000 pairs
+        pairs = list(itertools.combinations(list(range(500)), 2))
+        self.train_graph_pair_idx = random.sample(pairs, k=self.args.K)
+
+        # print(self.train_graph_pair_idx[:5])
+
+    def attach_features(self, embeddings, syn_n, gs):
+      for g_idx, G in enumerate(gs):
             for i in list(G.nodes()):
                 names = syn_n[g_idx][i]
                 if len(names) != 1:
@@ -76,12 +91,8 @@ class Trainer:
                 G.nodes()[i]['feature'] = emb
             for i in list(G.edges()):  ##
                 del G.edges()[i]['label']  ##
-
-        # 124750 possible pairs pick 2000 pairs
-        pairs = list(itertools.combinations(list(range(500)), 2))
-        self.train_graph_pair_idx = random.sample(pairs, k=self.args.K)
-
-        # print(self.train_graph_pair_idx[:5])
+  
+      return gs
 
     def compute_targets(self):
         geds = pkl.load(open(self.args.GED_PATH, 'rb'))
@@ -113,11 +124,11 @@ class Trainer:
             targets.append(torch.FloatTensor([self.targets[i] for i in idx_list]))
         return (train_loader_1, train_loader_2, targets)
 
-    def format_graph_single(self):
+    def format_graph_single(self, gs):
         graphs = []
-        for idx in range(len(self.graphs)):
+        for idx in range(len(gs)):
             # new_data = dict()
-            G = self.graphs[idx]
+            G = gs[idx]
 
             new_G = from_networkx(G)
 
@@ -167,7 +178,20 @@ class Trainer:
 
     def predict(self):
         print("\n\nProducing embeddings...\n")
-        graph_loader = self.format_graph_single()
+        graph_loader = self.format_graph_single(self.graphs)
+        embeddings = []
+
+        for graph_batch in graph_loader:
+            embedding_batch = self.model.conv_pass(graph_batch.feature.float(), graph_batch.edge_index,
+                                                   graph_batch.batch)
+            for i in embedding_batch:
+                embeddings.append(i.detach().numpy())
+
+        pkl.dump(embeddings, open(self.args.EMB_SAVE_PATH, 'wb'))
+
+    def test(self):
+        print("\n\nTEST: Producing embeddings for unseen graphs...\n")
+        graph_loader = self.format_graph_single(self.test_graphs)
         embeddings = []
 
         for graph_batch in graph_loader:
