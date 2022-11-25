@@ -1,6 +1,7 @@
 import config
 from trainer import Trainer
 
+
 def main():
     print("----- STARTING -----")
     args = config
@@ -12,14 +13,14 @@ def main():
 
     if args.SIM:
         trainer.find_similarity()
-    elif args.TEST: 
+    elif args.TEST_GRAPH_PATH:
         trainer.test()
     else:
         if args.SAVE_PATH:
             trainer.save()
-            
+
         trainer.predict()
-        
+
     print("-----  THE END  -----")
 
 

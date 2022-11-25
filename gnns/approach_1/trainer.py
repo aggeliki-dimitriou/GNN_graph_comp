@@ -52,7 +52,8 @@ class Trainer:
         self.graphs = pkl.load(open(self.args.GRAPH_PATH, "rb"))
 
         if self.args.TEST_GRAPH_PATH:
-          self.test_graphs = pkl.load(open(self.args.TEST_GRAPH_PATH, "rb"))
+            self.test_graphs = pkl.load(open(self.args.TEST_GRAPH_PATH, "rb"))
+            syn_n_test = pkl.load(open(self.args.TEST_SYN_N_PATH, "rb"))
 
         # load and assign attributes
         syn_n = pkl.load(open(self.args.SYN_N_PATH, "rb"))
@@ -61,12 +62,12 @@ class Trainer:
 
         self.num_features = len(list(embeddings.values())[0])
 
-        #self.graph_attributes = []
+        # self.graph_attributes = []
         self.attach_features(embeddings, syn_n, self.graphs)
 
         if self.args.TEST_GRAPH_PATH:
-          self.attach_features(embeddings, syn_n, self.test_graphs)
-          print(self.test_graphs[0].nodes.data())
+            self.attach_features(embeddings, syn_n_test, self.test_graphs)
+            # print(self.test_graphs[0].nodes.data())
 
         # 124750 possible pairs pick 2000 pairs
         pairs = list(itertools.combinations(list(range(500)), 2))
@@ -75,7 +76,7 @@ class Trainer:
         # print(self.train_graph_pair_idx[:5])
 
     def attach_features(self, embeddings, syn_n, gs):
-      for g_idx, G in enumerate(gs):
+        for g_idx, G in enumerate(gs):
             for i in list(G.nodes()):
                 names = syn_n[g_idx][i]
                 if len(names) != 1:
@@ -91,8 +92,8 @@ class Trainer:
                 G.nodes()[i]['feature'] = emb
             for i in list(G.edges()):  ##
                 del G.edges()[i]['label']  ##
-  
-      return gs
+
+        return gs
 
     def compute_targets(self):
         geds = pkl.load(open(self.args.GED_PATH, 'rb'))

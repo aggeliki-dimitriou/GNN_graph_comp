@@ -8,7 +8,7 @@ from torch_geometric.nn import global_mean_pool, global_add_pool
 class GNN_model(torch.nn.Module):
     def __init__(self, dims, num_features, training, p, model_type):
         super(GNN_model, self).__init__()
-        self.training = training
+        self.training = False
         self.p = float(p)
         self.layer_num = len(dims)
         self.model_type = model_type
