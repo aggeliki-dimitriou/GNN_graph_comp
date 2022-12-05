@@ -35,6 +35,7 @@ def find_embedding_glove(names, embedding_map):
 
 class Trainer:
     def __init__(self, args):
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.model_type = args.model_type
         self.args = args
         self.load_data()
@@ -42,9 +43,10 @@ class Trainer:
         self.setup_model()
         print(sum(param.numel() for param in self.model.parameters()))
 
+
     def setup_model(self):
         print('Setting up Model...')
-        self.model = GNN_model(self.args.dims, self.num_features, self.args.p, self.args.training, self.model_type)
+        self.model = GNN_model(self.args.dims, self.num_features, self.args.p, self.args.training, self.model_type, self.device).to(self.device)
 
     def load_data(self):
         print('Loading Data...')
@@ -113,8 +115,8 @@ class Trainer:
             G1 = self.graphs[idx[0]]
             G2 = self.graphs[idx[1]]
 
-            pairs_1.append(from_networkx(G1))
-            pairs_2.append(from_networkx(G2))
+            pairs_1.append(from_networkx(G1).to(self.device))
+            pairs_2.append(from_networkx(G2).to(self.device))
 
         train_loader_1 = DataLoader(pairs_1, batch_size=self.args.batch_size)
         train_loader_2 = DataLoader(pairs_2, batch_size=self.args.batch_size)
@@ -122,7 +124,7 @@ class Trainer:
                        enumerate(train_loader_1)]
         targets = []
         for idx_list in target_idxs:
-            targets.append(torch.FloatTensor([self.targets[i] for i in idx_list]))
+            targets.append(torch.FloatTensor([self.targets[i] for i in idx_list]).to(self.device))
         return (train_loader_1, train_loader_2, targets)
 
     def format_graph_single(self, gs):
@@ -131,7 +133,7 @@ class Trainer:
             # new_data = dict()
             G = gs[idx]
 
-            new_G = from_networkx(G)
+            new_G = from_networkx(G).to(self.device)
 
             graphs.append(new_G)
 
@@ -147,7 +149,7 @@ class Trainer:
 
         train_pred = self.model(batch1, batch2)
 
-        losses = torch.nn.functional.mse_loss(targets, train_pred)
+        losses = torch.nn.functional.mse_loss(targets, train_pred).to(self.device)
         losses.backward(retain_graph=True)
         self.optimizer.step()
         loss = losses.item()
