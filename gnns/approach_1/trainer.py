@@ -188,7 +188,7 @@ class Trainer:
             embedding_batch = self.model.conv_pass(graph_batch.feature.float(), graph_batch.edge_index,
                                                    graph_batch.batch)
             for i in embedding_batch:
-                embeddings.append(i.detach().numpy())
+                embeddings.append(i.cpu().detach().numpy())
 
         pkl.dump(embeddings, open(self.args.EMB_SAVE_PATH, 'wb'))
 
@@ -201,7 +201,7 @@ class Trainer:
             embedding_batch = self.model.conv_pass(graph_batch.feature.float(), graph_batch.edge_index,
                                                    graph_batch.batch)
             for i in embedding_batch:
-                embeddings.append(i.detach().numpy())
+                embeddings.append(i.cpu().detach().numpy())
 
         pkl.dump(embeddings, open(self.args.EMB_SAVE_PATH, 'wb'))
 
