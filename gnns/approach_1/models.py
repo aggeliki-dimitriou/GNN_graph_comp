@@ -1,18 +1,22 @@
 import torch
-from torch.nn import Linear, Sequential, BatchNorm1d, ReLU
+from torch.nn import Linear, Sequential, BatchNorm1d, ReLU, Flatten
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, GINConv, GATConv
 from torch_geometric.nn import global_mean_pool, global_add_pool
 
 
 class GNN_model(torch.nn.Module):
-    def __init__(self, dims, num_features, training, p, model_type, device):
+    def __init__(self, dims, num_features, training, p, model_type, device, depth):
         super(GNN_model, self).__init__()
         self.device = device
         self.training = False
         self.p = float(p)
         self.layer_num = len(dims)
         self.model_type = model_type
+
+        self.weight = Sequential(Flatten(), 
+                                    Linear((depth+1)*num_features, num_features),
+                                    ReLU())
 
         if model_type == 'gcn':
           self.setup_gcn(num_features, dims)
@@ -22,9 +26,9 @@ class GNN_model(torch.nn.Module):
           self.setup_gat(num_features, dims, 7, self.p)
 
     def setup_gcn(self, num_features, dims):
-        self.conv1 = GCNConv(num_features, dims[0]).to(self.device)  # Num features = initial embedding dimension
+        self.conv1 = GCNConv(num_features, dims[0])  # Num features = initial embedding dimension
         if len(dims) > 1:
-          self.conv1_1 = GCNConv(dims[0], dims[1]).to(self.device)
+          self.conv1_1 = GCNConv(dims[0], dims[1])
         if len(dims) > 2:
           self.conv1_2 = GCNConv(dims[1], dims[2])
 
@@ -54,7 +58,11 @@ class GNN_model(torch.nn.Module):
 
     def conv_pass(self, features, edge_index, batch):
         ret = []
-        h1 = F.dropout(features, p=self.p, training=self.training)
+        h1 = self.weight(features).to(self.device)
+
+        # h1 = torch.matmul(features, torch.transpose(w,0,1))
+
+        h1 = F.dropout(h1, p=self.p, training=self.training)
         h1 = self.conv1(h1, edge_index).to(self.device)
         if self.model_type != 'gin':
             h1 = h1.relu()
@@ -62,14 +70,14 @@ class GNN_model(torch.nn.Module):
 
         if self.layer_num > 1:
             h1 = F.dropout(h1, p=self.p, training=self.training)
-            h1 = self.conv1_1(h1, edge_index)
+            h1 = self.conv1_1(h1, edge_index).to(self.device)
             if self.model_type != 'gin':
                 h1 = h1.relu()
             ret.append(h1)
 
         if self.layer_num > 2:
             h1 = F.dropout(h1, p=self.p, training=self.training)
-            h1 = self.conv1_2(h1, edge_index)
+            h1 = self.conv1_2(h1, edge_index).to(self.device)
             if self.model_type != 'gin':
                 h1 = h1.relu()
             ret.append(h1)

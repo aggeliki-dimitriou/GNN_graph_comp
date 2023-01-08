@@ -12,25 +12,62 @@ from torch_geometric.loader import DataLoader
 from nltk.corpus import wordnet as wn
 
 
-def find_embedding_glove(names, embedding_map):
-    emb = []
-    hypers = []
+def find_embedding_glove(names, embedding_map, depth):
+    # max_retry = 5
+    # hypers = []
+
+    embs = []
     for i in names:
         name = i.split('.')[0]
         try:
-            emb = embedding_map[name]
-            break
+            # print(name)
+            embs.append(embedding_map[name])
+            # print(type(embedding_map[name]))
         except:
             components = name.split('_')
-            hypers = [c.name() for c in wn.synset(i).hypernyms()]
-            for j in components:
-                try:
-                    emb = embedding_map[j]
-                    break
-                except:
-                    continue
+            # hypers.append([c.name() for c in wn.synset(i).hypernyms()])
+            if len(components)>1:
+              emb = []
+              for j in components:
+                  try:
+                      emb.append(embedding_map[j])
+                  except:
+                      continue
+              emb = np.mean(np.array(emb), axis=0)
+              embs.append(emb)  
+            else:    
+              continue   
 
-    return emb, hypers
+    if len(embs) < depth+1:
+      mean = np.mean(np.array(embs), axis=0)
+      pad = [embs.append(mean) for i in range(depth+1-len(embs))]
+    return embs
+
+def find_hierarchy(k, c):
+    c_set = set()
+
+    prev = set([c])
+    c_set.add(c)
+
+    for _ in range(k):
+        hyps = set()
+        for j in prev:
+            hyp = set(j.hypernyms())
+            hyps = hyps.union(hyp)
+
+        c_set = c_set.union(hyps)
+
+        prev = hyps
+
+    backups = [wn.synsets(i.name()) for i in c_set]
+    b_s = set()
+    for l in backups:
+      for j in l:
+        b_s = b_s.union(j)
+
+    res = c_set.union(b_s)
+
+    return res
 
 
 class Trainer:
@@ -46,7 +83,7 @@ class Trainer:
 
     def setup_model(self):
         print('Setting up Model...')
-        self.model = GNN_model(self.args.dims, self.num_features, self.args.p, self.args.training, self.model_type, self.device).to(self.device)
+        self.model = GNN_model(self.args.dims, self.num_features, self.args.p, self.args.training, self.model_type, self.device, self.args.depth).to(self.device)
 
     def load_data(self):
         print('Loading Data...')
@@ -78,23 +115,29 @@ class Trainer:
         # print(self.train_graph_pair_idx[:5])
 
     def attach_features(self, embeddings, syn_n, gs):
-        for g_idx, G in enumerate(gs):
+        for g_idx, G in tqdm(enumerate(gs)):
             for i in list(G.nodes()):
                 names = syn_n[g_idx][i]
-                if len(names) != 1:
-                    print("Multiple Synsets", names)
+                # if len(names) != 1:
+                #     print("Multiple Synsets", names)
+                # names_c = set()
+                names_c = list(find_hierarchy(self.args.depth, wn.synset(names[0])))[:self.args.depth+1]
+                names_c = list([i.name() for i in names_c])
                 if 'glove' in self.args.EMBEDDING_PATH:
-                    emb = []
-                    while (emb == []):
-                        emb, names = find_embedding_glove(names, embeddings)
-                    emb = np.array(emb)
+                    embs = find_embedding_glove(list(names_c), embeddings, self.args.depth)
+                    assert len(embs) == 6
                 else:
-                    emb = embeddings[names[0]]
+                    embs = []
+                    for n in names:
+                        emb = embeddings[n]
+                        embs.append(emb)
+                    embs = embs
+                
+                embs = np.array(embs)
                 del G.nodes()[i]['label']  ##
-                G.nodes()[i]['feature'] = emb
+                G.nodes()[i]['feature'] = embs
             for i in list(G.edges()):  ##
                 del G.edges()[i]['label']  ##
-
         return gs
 
     def compute_targets(self):
@@ -110,6 +153,7 @@ class Trainer:
 
         pairs_1 = []
         pairs_2 = []
+
         for idx in self.train_graph_pair_idx:
             # new_data = dict()
             G1 = self.graphs[idx[0]]
