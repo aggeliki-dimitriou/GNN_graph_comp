@@ -6,6 +6,7 @@ import requests
 from grakel.utils import graph_from_networkx
 from grakel.kernels import WeisfeilerLehman, VertexHistogram, PyramidMatch, PropagationAttr, SubgraphMatching, GraphHopper
 import time
+import pickle as pkl
 
 def print_image(image_data, id):
   url = image_data[id]['url']
